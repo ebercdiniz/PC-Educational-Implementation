@@ -273,10 +273,10 @@ init_8251:
     mov al,15h
     out 12h,al
 
+;--------------------------------------------------------
+;	INICIALIZAR 8259 PIC				:
+;--------------------------------------------------------
 C25:
-;---------------------------------------------
-; Parametrizar 8259
-;---------------------------------------------
 
 ;ICW1
 ;Bit  Valor  Descricao
@@ -320,13 +320,6 @@ out INTA01,al
 mov al,0EFh
 out INTA01,al
 
-;setando RxRDY para int24h
-    mov ax, UART_OFFSET
-    mov [si+90h], ax
-    mov ax, UART_SEGMENT
-    mov [si+92h], ax
-    sti
-
 init_8253:
 ;---------------------------------------------
 ; Parametrizar 8253
@@ -350,7 +343,12 @@ OUT 40H, AL
 MOV AL, 00H       ; Byte alto
 OUT 40H, AL
 
-
+;setando RxRDY para int24h
+    mov ax, UART_OFFSET
+    mov [si+90h], ax
+    mov ax, UART_SEGMENT
+    mov [si+92h], ax
+    sti
 
 
 RESET	LABEL	FAR
@@ -437,15 +435,26 @@ C11:	JNE	ERR01			; HALT SYSTEM IF ERROR
 ;	ROS CHECKSUM SUBROUTINE 	:
 ;----------------------------------------
 ROS_CHECKSUM	PROC	NEAR		; NEXT_ROS_MODULE
-	MOV	CX,8192 		; NUMBER OF BYTES TO ADD
+	MOV	CX,0ffffh 		; NUMBER OF BYTES TO ADD
 ROS_CHECKSUM_CNT:			; ENTRY FOR OPTIONAL ROS TEST
 	XOR	AL,AL
 C26:
-	ADD	AL,DS:[BX]
+	ADD	AL,DS:[BX]		;CHECA OS ÚLTIMOS 64KBYTES DA MEMORIA
 	INC	BX			; POINT TO NEXT BYTE
 	LOOP	C26			; ADD ALL BYTES IN ROS MODULE
 	OR	AL,AL			; SUM = 0?
 	RET
+
+	MOV AX,0E000H			; APONTANDO DS PARA E0000H
+	MOV DS,AX
+	MOV	CX,0ffffh 		; NUMBER OF BYTES TO ADD
+C26a:
+	ADD	AL,DS:[BX]		;CHECA OS PRIMEIROS 64KBYTES DA MEMORIA
+	INC	BX			; POINT TO NEXT BYTE
+	LOOP	C26a			; ADD ALL BYTES IN ROS MODULE
+	OR	AL,AL			; SUM = 0?
+	RET
+
 ROS_CHECKSUM	ENDP
 
 ;--------------------------------------------------------

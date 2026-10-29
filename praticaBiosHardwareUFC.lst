@@ -275,10 +275,10 @@ praticaBiosHardwareUFC.asm
 000F001B  B015                      mov al,15h
 000F001D  E612                      out 12h,al
 
+                                ;--------------------------------------------------------
+                                ;	INICIALIZAR 8259 PIC				:
+                                ;--------------------------------------------------------
 000F001F                        C25:
-                                ;---------------------------------------------
-                                ; Parametrizar 8259
-                                ;---------------------------------------------
 
                                 ;ICW1
                                 ;Bit  Valor  Descricao
@@ -437,25 +437,36 @@ praticaBiosHardwareUFC.asm
                                 ;	ROS CHECKSUM SUBROUTINE 	:
                                 ;----------------------------------------
 000F00AC                        ROS_CHECKSUM	PROC	NEAR		; NEXT_ROS_MODULE
-000F00AC  B90020                	MOV	CX,8192 		; NUMBER OF BYTES TO ADD
+000F00AC  B9FFFF                	MOV	CX,0ffffh 		; NUMBER OF BYTES TO ADD
 000F00AF                        ROS_CHECKSUM_CNT:			; ENTRY FOR OPTIONAL ROS TEST
 000F00AF  32C0                  	XOR	AL,AL
 000F00B1                        C26:
-000F00B1  0207                  	ADD	AL,DS:[BX]
+000F00B1  0207                  	ADD	AL,DS:[BX]		;CHECA OS ÚLTIMOS 64KBYTES DA MEMORIA
 000F00B3  43                    	INC	BX			; POINT TO NEXT BYTE
 000F00B4  E2FB                  	LOOP	C26			; ADD ALL BYTES IN ROS MODULE
 000F00B6  0AC0                  	OR	AL,AL			; SUM = 0?
 000F00B8                        	RET
-000F00B9                        ROS_CHECKSUM	ENDP
+
+000F00B9  B800E0                	MOV AX,0E000H			; APONTANDO DS PARA E0000H
+000F00BC  8ED8                  	MOV DS,AX
+000F00BE  B9FFFF                	MOV	CX,0ffffh 		; NUMBER OF BYTES TO ADD
+000F00C1                        C26a:
+000F00C1  0207                  	ADD	AL,DS:[BX]		;CHECA OS PRIMEIROS 64KBYTES DA MEMORIA
+000F00C3  43                    	INC	BX			; POINT TO NEXT BYTE
+000F00C4  E2FB                  	LOOP	C26a			; ADD ALL BYTES IN ROS MODULE
+000F00C6  0AC0                  	OR	AL,AL			; SUM = 0?
+000F00C8                        	RET
+
+000F00C9                        ROS_CHECKSUM	ENDP
 
                                 ;--------------------------------------------------------
                                 ;	VOLTA AO NOSSO CÓDIGO
                                 ;--------------------------------------------------------
-000F00B9  FB                    	STI				;ativa interrupcoes novamente
+000F00C9  FB                    	STI				;ativa interrupcoes novamente
 
-000F00BA                        loop_principal:
-000F00BA  90                        nop
-000F00BB  EBFD                      jmp     loop_principal
+000F00CA                        loop_principal:
+000F00CA  90                        nop
+000F00CB  EBFD                      jmp     loop_principal
 
 
                                 org 0FFFF0h
@@ -497,8 +508,9 @@ Procedures, parameters and locals:
 
                 N a m e                 Type     Value    Segment  Length
 
-ROS_CHECKSUM . . . . . . . . . .        P Near   F00AC     PRATICABIOSHARDWAREUFC_TEXT 000D Public   
+ROS_CHECKSUM . . . . . . . . . .        P Near   F00AC     PRATICABIOSHARDWAREUFC_TEXT 001D Public   
   C26  . . . . . . . . . . . . .        L Near   F00B1     PRATICABIOSHARDWAREUFC_TEXT
+  C26a . . . . . . . . . . . . .        L Near   F00C1     PRATICABIOSHARDWAREUFC_TEXT
   ROS_CHECKSUM_CNT . . . . . . .        L Near   F00AF     PRATICABIOSHARDWAREUFC_TEXT
 
 
@@ -594,7 +606,7 @@ inicio . . . . . . . . . . . . .        L Near         FFFF0h PRATICABIOSHARDWAR
 init_8251  . . . . . . . . . . .        L Near         F0007h PRATICABIOSHARDWAREUFC_TEXT 
 init_8253  . . . . . . . . . . .        L Near         F002Fh PRATICABIOSHARDWAREUFC_TEXT 
 init_bios  . . . . . . . . . . .        L Near         F0000h PRATICABIOSHARDWAREUFC_TEXT 
-loop_principal . . . . . . . . .        L Near         F00BAh PRATICABIOSHARDWAREUFC_TEXT 
+loop_principal . . . . . . . . .        L Near         F00CAh PRATICABIOSHARDWAREUFC_TEXT 
 uart_int . . . . . . . . . . . .        L Near         E0000h PRATICABIOSHARDWAREUFC_TEXT 
 
-praticaBiosHardwareUFC.asm: 468 lines, 2 passes, 0 ms, 1 warnings, 1 errors
+praticaBiosHardwareUFC.asm: 479 lines, 2 passes, 16 ms, 1 warnings, 1 errors
