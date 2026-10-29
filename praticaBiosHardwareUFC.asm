@@ -87,6 +87,9 @@ DATA_WORD	LABEL	WORD
 MFG_TEST_RTN	LABEL	FAR
 	ORG	7C00H
 BOOT_LOCN	LABEL	FAR
+UART_OFFSET  	EQU	0000H
+UART_SEGMENT 	EQU	0E000h
+
 ABS0		ENDS
 
 ;------------------------------------------------
@@ -270,7 +273,7 @@ init_8251:
     mov al,15h
     out 12h,al
 
-init_8259:
+C25:
 ;---------------------------------------------
 ; Parametrizar 8259
 ;---------------------------------------------
@@ -284,7 +287,7 @@ init_8259:
 ;D0    1     ICW4 will follow
 
 mov al,13h
-out 80h,al
+out INTA00,al
 
 ;ICW2
 ;Interrupt Vector Base (onde começa o vetor de interrupcao)
@@ -297,7 +300,7 @@ out 80h,al
 ;0x20 a 0x27 e usado pelo MS-DOS e pela IBM (caso queiramos portar nosso computador pra esse OS)
 
 mov al,20h
-out 82h,al
+out INTA01,al
 
 ;ICW4
 ;Bit  Valor  Descricao
@@ -308,14 +311,21 @@ out 82h,al
 ;D4     0    Special Fully Nested Mode disabled
 
 mov al,01h
-out 82h,al
+out INTA01,al
 
 
 ;OCW1(IMR)
 ;11101111b = FDh habilita so o serial (IRQ4); Compativel com MS-DOS
 
 mov al,0EFh
-out 82h,al
+out INTA01,al
+
+;setando RxRDY para int24h
+    mov ax, UART_OFFSET
+    mov [si+90h], ax
+    mov ax, UART_SEGMENT
+    mov [si+92h], ax
+    sti
 
 init_8253:
 ;---------------------------------------------
@@ -340,18 +350,7 @@ OUT 40H, AL
 MOV AL, 00H       ; Byte alto
 OUT 40H, AL
 
-   
-UART_OFFSET  = 00000h
-UART_SEGMENT = 0E000h
 
-
-
-;setando RxRDY para int24h
-    mov ax, UART_OFFSET
-    mov [si+90h], ax
-    mov ax, UART_SEGMENT
-    mov [si+92h], ax
-    sti
 
 
 RESET	LABEL	FAR

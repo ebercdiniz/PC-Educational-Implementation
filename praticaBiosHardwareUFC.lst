@@ -89,6 +89,9 @@ praticaBiosHardwareUFC.asm
 00000500                        MFG_TEST_RTN	LABEL	FAR
                                 	ORG	7C00H
 00007C00                        BOOT_LOCN	LABEL	FAR
+ = 0                            UART_OFFSET  	EQU	0000H
+ = E000                         UART_SEGMENT 	EQU	0E000h
+
 00007C00                        ABS0		ENDS
 
                                 ;------------------------------------------------
@@ -272,7 +275,7 @@ praticaBiosHardwareUFC.asm
 000F001B  B015                      mov al,15h
 000F001D  E612                      out 12h,al
 
-000F001F                        init_8259:
+000F001F                        C25:
                                 ;---------------------------------------------
                                 ; Parametrizar 8259
                                 ;---------------------------------------------
@@ -286,7 +289,7 @@ praticaBiosHardwareUFC.asm
                                 ;D0    1     ICW4 will follow
 
 000F001F  B013                  mov al,13h
-000F0021  E680                  out 80h,al
+000F0021  E680                  out INTA00,al
 
                                 ;ICW2
                                 ;Interrupt Vector Base (onde começa o vetor de interrupcao)
@@ -299,7 +302,7 @@ praticaBiosHardwareUFC.asm
                                 ;0x20 a 0x27 e usado pelo MS-DOS e pela IBM (caso queiramos portar nosso computador pra esse OS)
 
 000F0023  B020                  mov al,20h
-000F0025  E682                  out 82h,al
+000F0025  E682                  out INTA01,al
 
                                 ;ICW4
                                 ;Bit  Valor  Descricao
@@ -310,14 +313,14 @@ praticaBiosHardwareUFC.asm
                                 ;D4     0    Special Fully Nested Mode disabled
 
 000F0027  B001                  mov al,01h
-000F0029  E682                  out 82h,al
+000F0029  E682                  out INTA01,al
 
 
                                 ;OCW1(IMR)
                                 ;11101111b = FDh habilita so o serial (IRQ4); Compativel com MS-DOS
 
 000F002B  B0EF                  mov al,0EFh
-000F002D  E682                  out 82h,al
+000F002D  E682                  out INTA01,al
 
 000F002F                        init_8253:
                                 ;---------------------------------------------
@@ -341,12 +344,6 @@ praticaBiosHardwareUFC.asm
 
 000F0037  B000                  MOV AL, 00H       ; Byte alto
 000F0039  E640                  OUT 40H, AL
-
-                                   
- = 0                            UART_OFFSET  = 00000h
- = E000                         UART_SEGMENT = 0E000h
-
-
 
                                 ;setando RxRDY para int24h
 000F003B  B80000                    mov ax, UART_OFFSET
@@ -454,13 +451,11 @@ praticaBiosHardwareUFC.asm
                                 ;--------------------------------------------------------
                                 ;	VOLTA AO NOSSO CÓDIGO
                                 ;--------------------------------------------------------
-000F00B9  B80000                	mov ax,0000h
-000F00BC  8ED8                  	mov ds,ax
-000F00BE  FB                    	STI				;ativa interrupcoes novamente
+000F00B9  FB                    	STI				;ativa interrupcoes novamente
 
-000F00BF                        loop_principal:
-000F00BF  90                        nop
-000F00C0  EBFD                      jmp     loop_principal
+000F00BA                        loop_principal:
+000F00BA  90                        nop
+000F00BB  EBFD                      jmp     loop_principal
 
 
                                 org 0FFFF0h
@@ -529,6 +524,7 @@ BUFFER_TAIL  . . . . . . . . . .        Word               5h PRATICABIOSHARDWAR
 C1 . . . . . . . . . . . . . . .        Word              40h PRATICABIOSHARDWAREUFC_TEXT 
 C10  . . . . . . . . . . . . . .        L Near         F009Dh PRATICABIOSHARDWAREUFC_TEXT 
 C11  . . . . . . . . . . . . . .        L Near         F00AAh PRATICABIOSHARDWAREUFC_TEXT 
+C25  . . . . . . . . . . . . . .        L Near         F001Fh PRATICABIOSHARDWAREUFC_TEXT 
 C8 . . . . . . . . . . . . . . .        L Near         F007Bh PRATICABIOSHARDWAREUFC_TEXT 
 C9 . . . . . . . . . . . . . . .        L Near         F0098h PRATICABIOSHARDWAREUFC_TEXT 
 CAPS_KEY . . . . . . . . . . . .        Number            3Ah 
@@ -597,9 +593,8 @@ VIDEO_INT  . . . . . . . . . . .        Word              40h ABS0
 inicio . . . . . . . . . . . . .        L Near         FFFF0h PRATICABIOSHARDWAREUFC_TEXT Public 
 init_8251  . . . . . . . . . . .        L Near         F0007h PRATICABIOSHARDWAREUFC_TEXT 
 init_8253  . . . . . . . . . . .        L Near         F002Fh PRATICABIOSHARDWAREUFC_TEXT 
-init_8259  . . . . . . . . . . .        L Near         F001Fh PRATICABIOSHARDWAREUFC_TEXT 
 init_bios  . . . . . . . . . . .        L Near         F0000h PRATICABIOSHARDWAREUFC_TEXT 
-loop_principal . . . . . . . . .        L Near         F00BFh PRATICABIOSHARDWAREUFC_TEXT 
+loop_principal . . . . . . . . .        L Near         F00BAh PRATICABIOSHARDWAREUFC_TEXT 
 uart_int . . . . . . . . . . . .        L Near         E0000h PRATICABIOSHARDWAREUFC_TEXT 
 
-praticaBiosHardwareUFC.asm: 473 lines, 2 passes, 16 ms, 1 warnings, 1 errors
+praticaBiosHardwareUFC.asm: 468 lines, 2 passes, 0 ms, 1 warnings, 1 errors
