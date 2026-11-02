@@ -391,14 +391,14 @@ praticaBiosHardwareUFC.asm
 000F0037  E682                  	OUT	INTA01,AL
 000F0039  E482                  	IN	AL,INTA01		; READ IMR
 000F003B  0AC0                  	OR	AL,AL			; IMR = 0?
-000F003D  7522                  	JNZ	D6			; GO TO ERR ROUTINE IF NOT 0
+000F003D  7521                  	JNZ	D6			; GO TO ERR ROUTINE IF NOT 0
 000F003F                        C21B:
 000F003F  B0FF                  	MOV	AL,0FFH 		; DISABLE DEVICE INTERRUPTS
 000F0041  E682                  	OUT	INTA01,AL		; WRITE TO IMR
 000F0043  E682                  	OUT	INTA01,AL		; REPETIDO POIS ESTRANHAMENTE O IMR NAO CONSEGUE SER SETADO NO PRIMEIRO OUT
 000F0045  E482                  	IN	AL,INTA01		; READ IMR
 000F0047  0401                  	ADD	AL,1			; ALL IMR BITS ON?
-000F0049  7516                  	JNZ	D6			; NO - GO TO ERR ROUTINE
+000F0049  7515                  	JNZ	D6			; NO - GO TO ERR ROUTINE
 
 
 
@@ -416,20 +416,19 @@ praticaBiosHardwareUFC.asm
 000F0055  803E410000            	CMP	DATA_AREA[INTR_FLAG_OFFSET],00H ; DID ANY INTERRUPTS OCCUR?
 000F005A  B0EF                  	MOV	AL,0EFH			; ATIVANDO APENAS A INTERRUPCAO SERIAL (IRQ4)
 000F005C  E682                  	OUT	INTA01,AL
-000F005E  FB                    	STI
                                 ;	JZ	D7			; NO - GO TO NEXT TEST
-000F005F  7402                  	JZ	init_8253		; MODIFICADO. PULA PARA A CONFIGURACAO DO 8253
-000F0061                        D6:
+000F005E  7402                  	JZ	init_8253		; MODIFICADO. PULA PARA A CONFIGURACAO DO 8253
+000F0060                        D6:
                                 ;COMENTANDO POIS NÃO FOI IMPLEMENTADO AINDA
                                 ;	MOV	SI,OFFSET E0		; DISPLAY 101 ERROR
                                 ;	CALL	E_MSG
-000F0061  FA                    	CLI
-000F0062  F4                    	HLT				; HALT THE SYSTEM
+000F0060  FA                    	CLI
+000F0061  F4                    	HLT				; HALT THE SYSTEM
 
                                 ;--------------------------------------------------------
                                 ;	INICIALIZAR 8253 PIT				:
                                 ;--------------------------------------------------------
-000F0063                        init_8253:
+000F0062                        init_8253:
 
                                 ;Bits			Descrição
                                 ;D7–D6 (SC1:SC0)	Seleciona contador 0, 1 ou 2
@@ -440,76 +439,76 @@ praticaBiosHardwareUFC.asm
                                 ; Configura Contador 0:
                                 ; Mode 3, binary, low byte followed by high byte
 
-000F0063  B036                  MOV AL, 36H	  ; Contador 0 Modo 3(Onda quadrada), contador binário
-000F0065  E646                  OUT 46H, AL       ; Word de Controle
+000F0062  B036                  MOV AL, 36H	  ; Contador 0 Modo 3(Onda quadrada), contador binário
+000F0064  E646                  OUT 46H, AL       ; Word de Controle
 
                                 ;Carrega a contagem no Contador 0
-000F0067  B00C                  MOV AL, 0CH      ; Byte baixo
-000F0069  E640                  OUT 40H, AL
+000F0066  B00C                  MOV AL, 0CH      ; Byte baixo
+000F0068  E640                  OUT 40H, AL
 
-000F006B  B000                  MOV AL, 00H       ; Byte alto
-000F006D  E640                  OUT 40H, AL
+000F006A  B000                  MOV AL, 00H       ; Byte alto
+000F006C  E640                  OUT 40H, AL
 
                                 ;setando RxRDY para int24h
-000F006F  B80000                    mov ax, UART_OFFSET
-000F0072  89849000                  mov [si+90h], ax
-000F0076  B800E0                    mov ax, UART_SEGMENT
-000F0079  89849200                  mov [si+92h], ax
-000F007D  FB                        sti
+000F006E  B80000                    mov ax, UART_OFFSET
+000F0071  89849000                  mov [si+90h], ax
+000F0075  B800E0                    mov ax, UART_SEGMENT
+000F0078  89849200                  mov [si+92h], ax
+000F007C  FB                        sti
 
 
-000F007E                        RESET	LABEL	FAR
-000F007E  FA                    START:	CLI				; DISABLE INTERRUPTS
-000F007F  B4D5                  	MOV	AH,0D5H 		; SET SF, CF, ZF, AND AF FLAGS ON
-000F0081  9E                    	SAHF
-000F0082  734C                  	JNC	ERR01			; GO TO ERR ROUTINE IF CF NOT SET
-000F0084  754A                  	JNZ	ERR01			; GO TO ERR ROUTINE IF ZF NOT SET
-000F0086  7B48                  	JNP	ERR01			; GO TO ERR ROUTINE IF PF NOT SET
-000F0088  7946                  	JNS	ERR01			; GO TO ERR ROUTINE IF SF NOT SET
-000F008A  9F                    	LAHF				; LOAD FLAG IMAGE TO AH
-000F008B  B105                  	MOV	CL,5			; LOAD CNT REG WITH SHIFT CNT
-000F008D  D2EC                  	SHR	AH,CL			; SHIFT AF INTO CARRY BIT POS
-000F008F  733F                  	JNC	ERR01			; SO TO ERR ROUTINE IF AF NOT SET
-000F0091  B040                  	MOV	AL,40H			; SET THE OF FLAG ON
-000F0093  D0E0                  	SHL	AL,1			; SETUP FOR TESTING
-000F0095  7139                  	JNO	ERR01			; GO TO ERR ROUTINE IF OF NOT SET
-000F0097  32E4                  	XOR	AH,AH			; SET AH = 0
-000F0099  9E                    	SAHF				; CLEAR SF, CF, ZF, AND PF
-000F009A  7634                  	JBE	ERR01			; GO TO ERR ROUTINE IF CF ON
+000F007D                        RESET	LABEL	FAR
+000F007D  FA                    START:	CLI				; DISABLE INTERRUPTS
+000F007E  B4D5                  	MOV	AH,0D5H 		; SET SF, CF, ZF, AND AF FLAGS ON
+000F0080  9E                    	SAHF
+000F0081  734C                  	JNC	ERR01			; GO TO ERR ROUTINE IF CF NOT SET
+000F0083  754A                  	JNZ	ERR01			; GO TO ERR ROUTINE IF ZF NOT SET
+000F0085  7B48                  	JNP	ERR01			; GO TO ERR ROUTINE IF PF NOT SET
+000F0087  7946                  	JNS	ERR01			; GO TO ERR ROUTINE IF SF NOT SET
+000F0089  9F                    	LAHF				; LOAD FLAG IMAGE TO AH
+000F008A  B105                  	MOV	CL,5			; LOAD CNT REG WITH SHIFT CNT
+000F008C  D2EC                  	SHR	AH,CL			; SHIFT AF INTO CARRY BIT POS
+000F008E  733F                  	JNC	ERR01			; SO TO ERR ROUTINE IF AF NOT SET
+000F0090  B040                  	MOV	AL,40H			; SET THE OF FLAG ON
+000F0092  D0E0                  	SHL	AL,1			; SETUP FOR TESTING
+000F0094  7139                  	JNO	ERR01			; GO TO ERR ROUTINE IF OF NOT SET
+000F0096  32E4                  	XOR	AH,AH			; SET AH = 0
+000F0098  9E                    	SAHF				; CLEAR SF, CF, ZF, AND PF
+000F0099  7634                  	JBE	ERR01			; GO TO ERR ROUTINE IF CF ON
                                 					; OR TO TO ERR ROUTINE IF ZF ON
-000F009C  7832                  	JS	ERR01			; GO TO ERR ROUTINE IF SF ON
-000F009E  7A30                  	JP	ERR01			; GO TO ERR ROUTINE IF PF ON
-000F00A0  9F                    	LAHF				; LOAD FLAG IMAGE TO AH
-000F00A1  B105                  	MOV	CL,5			; LOAD CNT REG WITH SHIFT CNT
-000F00A3  D2EC                  	SHR	AH,CL			; SHIFT AH INTO CARRY BIT POS
-000F00A5  7229                  	JC	ERR01			; GO TO ERR ROUTINE IF ON
-000F00A7  D0E4                  	SHL	AH,1			; CHECK THAT OF IS CLEAR
-000F00A9  7025                  	JO	ERR01			; GO TO ERR ROUTINE IF ON
+000F009B  7832                  	JS	ERR01			; GO TO ERR ROUTINE IF SF ON
+000F009D  7A30                  	JP	ERR01			; GO TO ERR ROUTINE IF PF ON
+000F009F  9F                    	LAHF				; LOAD FLAG IMAGE TO AH
+000F00A0  B105                  	MOV	CL,5			; LOAD CNT REG WITH SHIFT CNT
+000F00A2  D2EC                  	SHR	AH,CL			; SHIFT AH INTO CARRY BIT POS
+000F00A4  7229                  	JC	ERR01			; GO TO ERR ROUTINE IF ON
+000F00A6  D0E4                  	SHL	AH,1			; CHECK THAT OF IS CLEAR
+000F00A8  7025                  	JO	ERR01			; GO TO ERR ROUTINE IF ON
 
                                 ;----- READ/WRITE THE 8088 GENERAL AND SEGMENTATION REGISTERS
                                 ;      WITH ALL ONE'S AND ZEROES'S.
 
-000F00AB  B8FFFF                	MOV	AX,0FFFFH		; SETUP ONE'S PATTERN IN AX
-000F00AE  F9                    	STC
-000F00AF  8ED8                  C8:	MOV	DS,AX			; WRITE PATTERN TO ALL REGS
-000F00B1  8CDB                  	MOV	BX,DS
-000F00B3  8EC3                  	MOV	ES,BX
-000F00B5  8CC1                  	MOV	CX,ES
-000F00B7  8ED1                  	MOV	SS,CX
-000F00B9  8CD2                  	MOV	DX,SS
-000F00BB  8BE2                  	MOV	SP,DX
-000F00BD  8BEC                  	MOV	BP,SP
-000F00BF  8BF5                  	MOV	SI,BP
-000F00C1  8BFE                  	MOV	DI,SI
-000F00C3  7307                  	JNC	C9			; TST1A
-000F00C5  33C7                  	XOR	AX,DI			; PATTERN MAKE IT THRU ALL REGS
-000F00C7  7507                  	JNZ	ERR01			; NO - GO TO ERR ROUTINE
-000F00C9  F8                    	CLC
-000F00CA  EBE3                  	JMP	C8
-000F00CC                        C9:					; TST1A
-000F00CC  0BC7                  	OR	AX,DI			; ZERO PATTERN MAKE IT THRU?
-000F00CE  7401                  	JZ	C10			; YES - GO TO NEXT TEST
-000F00D0  F4                    ERR01:	HLT				; HALT SYSTEM
+000F00AA  B8FFFF                	MOV	AX,0FFFFH		; SETUP ONE'S PATTERN IN AX
+000F00AD  F9                    	STC
+000F00AE  8ED8                  C8:	MOV	DS,AX			; WRITE PATTERN TO ALL REGS
+000F00B0  8CDB                  	MOV	BX,DS
+000F00B2  8EC3                  	MOV	ES,BX
+000F00B4  8CC1                  	MOV	CX,ES
+000F00B6  8ED1                  	MOV	SS,CX
+000F00B8  8CD2                  	MOV	DX,SS
+000F00BA  8BE2                  	MOV	SP,DX
+000F00BC  8BEC                  	MOV	BP,SP
+000F00BE  8BF5                  	MOV	SI,BP
+000F00C0  8BFE                  	MOV	DI,SI
+000F00C2  7307                  	JNC	C9			; TST1A
+000F00C4  33C7                  	XOR	AX,DI			; PATTERN MAKE IT THRU ALL REGS
+000F00C6  7507                  	JNZ	ERR01			; NO - GO TO ERR ROUTINE
+000F00C8  F8                    	CLC
+000F00C9  EBE3                  	JMP	C8
+000F00CB                        C9:					; TST1A
+000F00CB  0BC7                  	OR	AX,DI			; ZERO PATTERN MAKE IT THRU?
+000F00CD  7401                  	JZ	C10			; YES - GO TO NEXT TEST
+000F00CF  F4                    ERR01:	HLT				; HALT SYSTEM
                                 ;----------------------------------------
                                 ;	ROS CHECKSUM TEST I		:
                                 ;DESCRIPTION				:
@@ -517,19 +516,19 @@ praticaBiosHardwareUFC.asm
                                 ;	ROS MODULE CONTAINING POD AND	:
                                 ;	BIOS.				:
                                 ;----------------------------------------
-000F00D1                        C10:
-000F00D1  8CC8                  	MOV	AX,CS			; SETUP SS SEG REG
+000F00D0                        C10:
+000F00D0  8CC8                  	MOV	AX,CS			; SETUP SS SEG REG
                                 ;	MOV	SS,AX
-000F00D3  8ED8                  	MOV	DS,AX			; SET UP DATA SEG TO POINT TO
+000F00D2  8ED8                  	MOV	DS,AX			; SET UP DATA SEG TO POINT TO
                                 					; ROM ADDRESS
-000F00D5  FC                    	CLD				; SET DIRECTION FLAG TO INC.
+000F00D4  FC                    	CLD				; SET DIRECTION FLAG TO INC.
                                 ;	ASSUME	SS:CODE
-000F00D6  BB00E0                	MOV	BX,0E000H		; SETUP STARTING ROS ADDR
+000F00D5  BB00E0                	MOV	BX,0E000H		; SETUP STARTING ROS ADDR
                                 ;	MOV	SP,OFFSET C1		; SETUP RETURN ADDRESS
-000F00D9  BCFFFF                	MOV	SP,0FFFFh		; SETUP RETURN ADDRESS
+000F00D8  BCFFFF                	MOV	SP,0FFFFh		; SETUP RETURN ADDRESS
 
-000F00DC  EB02                  	JMP	ROS_CHECKSUM
-000F00DE  75F0                  C11:	JNE	ERR01			; HALT SYSTEM IF ERROR
+000F00DB  EB02                  	JMP	ROS_CHECKSUM
+000F00DD  75F0                  C11:	JNE	ERR01			; HALT SYSTEM IF ERROR
 
 
                                 ;--------------------------------------------------------
@@ -541,37 +540,37 @@ praticaBiosHardwareUFC.asm
                                 ;----------------------------------------
                                 ;	ROS CHECKSUM SUBROUTINE 	:
                                 ;----------------------------------------
-000F00E0                        ROS_CHECKSUM	PROC	NEAR		; NEXT_ROS_MODULE
-000F00E0  B9FF0F                	MOV	CX,0fffh 		; NUMBER OF BYTES TO ADD
-000F00E3                        ROS_CHECKSUM_CNT:			; ENTRY FOR OPTIONAL ROS TEST
-000F00E3  32C0                  	XOR	AL,AL
-000F00E5                        C26:
-000F00E5  0207                  	ADD	AL,DS:[BX]		;CHECA OS ÚLTIMOS 64KBYTES DA MEMORIA
-000F00E7  43                    	INC	BX			; POINT TO NEXT BYTE
-000F00E8  E2FB                  	LOOP	C26			; ADD ALL BYTES IN ROS MODULE
-000F00EA  0AC0                  	OR	AL,AL			; SUM = 0?
-000F00EC                        	RET
+000F00DF                        ROS_CHECKSUM	PROC	NEAR		; NEXT_ROS_MODULE
+000F00DF  B9FF0F                	MOV	CX,0fffh 		; NUMBER OF BYTES TO ADD
+000F00E2                        ROS_CHECKSUM_CNT:			; ENTRY FOR OPTIONAL ROS TEST
+000F00E2  32C0                  	XOR	AL,AL
+000F00E4                        C26:
+000F00E4  0207                  	ADD	AL,DS:[BX]		;CHECA OS ÚLTIMOS 64KBYTES DA MEMORIA
+000F00E6  43                    	INC	BX			; POINT TO NEXT BYTE
+000F00E7  E2FB                  	LOOP	C26			; ADD ALL BYTES IN ROS MODULE
+000F00E9  0AC0                  	OR	AL,AL			; SUM = 0?
+000F00EB                        	RET
 
-000F00ED  B800E0                	MOV AX,0E000H			; APONTANDO DS PARA E0000H
-000F00F0  8ED8                  	MOV DS,AX
-000F00F2  B9FF0F                	MOV	CX,0fffh 		; NUMBER OF BYTES TO ADD
-000F00F5                        C26a:
-000F00F5  0207                  	ADD	AL,DS:[BX]		;CHECA OS PRIMEIROS 64KBYTES DA MEMORIA
-000F00F7  43                    	INC	BX			; POINT TO NEXT BYTE
-000F00F8  E2FB                  	LOOP	C26a			; ADD ALL BYTES IN ROS MODULE
-000F00FA  0AC0                  	OR	AL,AL			; SUM = 0?
-000F00FC                        	RET
+000F00EC  B800E0                	MOV AX,0E000H			; APONTANDO DS PARA E0000H
+000F00EF  8ED8                  	MOV DS,AX
+000F00F1  B9FF0F                	MOV	CX,0fffh 		; NUMBER OF BYTES TO ADD
+000F00F4                        C26a:
+000F00F4  0207                  	ADD	AL,DS:[BX]		;CHECA OS PRIMEIROS 64KBYTES DA MEMORIA
+000F00F6  43                    	INC	BX			; POINT TO NEXT BYTE
+000F00F7  E2FB                  	LOOP	C26a			; ADD ALL BYTES IN ROS MODULE
+000F00F9  0AC0                  	OR	AL,AL			; SUM = 0?
+000F00FB                        	RET
 
-000F00FD                        ROS_CHECKSUM	ENDP
+000F00FC                        ROS_CHECKSUM	ENDP
 
                                 ;--------------------------------------------------------
                                 ;	VOLTA AO NOSSO CÓDIGO
                                 ;--------------------------------------------------------
-000F00FD  FB                    	STI				;ativa interrupcoes novamente
+000F00FC  FB                    	STI				;ativa interrupcoes novamente
 
-000F00FE                        loop_principal:
-000F00FE  90                        nop
-000F00FF  EBFD                      jmp     loop_principal
+000F00FD                        loop_principal:
+000F00FD  90                        nop
+000F00FE  EBFD                      jmp     loop_principal
 
 
                                 org 0FFFF0h
@@ -614,10 +613,10 @@ Procedures, parameters and locals:
 
                 N a m e                 Type     Value    Segment  Length
 
-ROS_CHECKSUM . . . . . . . . . .        P Near   F00E0     PRATICABIOSHARDWAREUFC_TEXT 001D Public   
-  C26  . . . . . . . . . . . . .        L Near   F00E5     PRATICABIOSHARDWAREUFC_TEXT
-  C26a . . . . . . . . . . . . .        L Near   F00F5     PRATICABIOSHARDWAREUFC_TEXT
-  ROS_CHECKSUM_CNT . . . . . . .        L Near   F00E3     PRATICABIOSHARDWAREUFC_TEXT
+ROS_CHECKSUM . . . . . . . . . .        P Near   F00DF     PRATICABIOSHARDWAREUFC_TEXT 001D Public   
+  C26  . . . . . . . . . . . . .        L Near   F00E4     PRATICABIOSHARDWAREUFC_TEXT
+  C26a . . . . . . . . . . . . .        L Near   F00F4     PRATICABIOSHARDWAREUFC_TEXT
+  ROS_CHECKSUM_CNT . . . . . . .        L Near   F00E2     PRATICABIOSHARDWAREUFC_TEXT
 
 
 Symbols:
@@ -640,14 +639,14 @@ BOOT_LOCN  . . . . . . . . . . .        L Far           7C00h ABS0
 BUFFER_HEAD  . . . . . . . . . .        Word              19h DATA 
 BUFFER_TAIL  . . . . . . . . . .        Word              1Bh DATA 
 C1 . . . . . . . . . . . . . . .        Word               0h PRATICABIOSHARDWAREUFC_TEXT 
-C10  . . . . . . . . . . . . . .        L Near         F00D1h PRATICABIOSHARDWAREUFC_TEXT 
-C11  . . . . . . . . . . . . . .        L Near         F00DEh PRATICABIOSHARDWAREUFC_TEXT 
+C10  . . . . . . . . . . . . . .        L Near         F00D0h PRATICABIOSHARDWAREUFC_TEXT 
+C11  . . . . . . . . . . . . . .        L Near         F00DDh PRATICABIOSHARDWAREUFC_TEXT 
 C21  . . . . . . . . . . . . . .        L Near         F002Fh PRATICABIOSHARDWAREUFC_TEXT 
 C21A . . . . . . . . . . . . . .        L Near         F0030h PRATICABIOSHARDWAREUFC_TEXT 
 C21B . . . . . . . . . . . . . .        L Near         F003Fh PRATICABIOSHARDWAREUFC_TEXT 
 C25  . . . . . . . . . . . . . .        L Near         F001Fh PRATICABIOSHARDWAREUFC_TEXT 
-C8 . . . . . . . . . . . . . . .        L Near         F00AFh PRATICABIOSHARDWAREUFC_TEXT 
-C9 . . . . . . . . . . . . . . .        L Near         F00CCh PRATICABIOSHARDWAREUFC_TEXT 
+C8 . . . . . . . . . . . . . . .        L Near         F00AEh PRATICABIOSHARDWAREUFC_TEXT 
+C9 . . . . . . . . . . . . . . .        L Near         F00CBh PRATICABIOSHARDWAREUFC_TEXT 
 CAPS_KEY . . . . . . . . . . . .        Number            3Ah 
 CAPS_SHIFT . . . . . . . . . . .        Number            40h 
 CAPS_STATE . . . . . . . . . . .        Number            40h 
@@ -655,7 +654,7 @@ CTL_KEY  . . . . . . . . . . . .        Number            1Dh
 CTL_SHIFT  . . . . . . . . . . .        Number             4h 
 D4 . . . . . . . . . . . . . . .        L Near         F0051h PRATICABIOSHARDWAREUFC_TEXT 
 D5 . . . . . . . . . . . . . . .        L Near         F0053h PRATICABIOSHARDWAREUFC_TEXT 
-D6 . . . . . . . . . . . . . . .        L Near         F0061h PRATICABIOSHARDWAREUFC_TEXT 
+D6 . . . . . . . . . . . . . . .        L Near         F0060h PRATICABIOSHARDWAREUFC_TEXT 
 D7 . . . . . . . . . . . . . . .        L Near         F001Fh PRATICABIOSHARDWAREUFC_TEXT 
 DATA_AREA  . . . . . . . . . . .        Byte             400h ABS0 
 DATA_WORD  . . . . . . . . . . .        Word             400h ABS0 
@@ -665,7 +664,7 @@ DMA  . . . . . . . . . . . . . .        Number             0h
 DMA08  . . . . . . . . . . . . .        Number             8h 
 EOI  . . . . . . . . . . . . . .        Number            20h 
 EQUIP_FLAG . . . . . . . . . . .        Word              10h DATA 
-ERR01  . . . . . . . . . . . . .        L Near         F00D0h PRATICABIOSHARDWAREUFC_TEXT 
+ERR01  . . . . . . . . . . . . .        L Near         F00CFh PRATICABIOSHARDWAREUFC_TEXT 
 EXT_PTR  . . . . . . . . . . . .        DWord             7Ch ABS0 
 HOLD_STATE . . . . . . . . . . .        Number             8h 
 INS_KEY  . . . . . . . . . . . .        Number            52h 
@@ -699,7 +698,7 @@ NUM_STATE  . . . . . . . . . . .        Number            20h
 PARM_PTR . . . . . . . . . . . .        DWord             74h ABS0 
 PRINTER_BASE . . . . . . . . . .        Word[4]            8h DATA 
 PRINT_TIM_OUT  . . . . . . . . .        Byte[4]           4Eh DATA 
-RESET  . . . . . . . . . . . . .        L Far          F007Eh PRATICABIOSHARDWAREUFC_TEXT 
+RESET  . . . . . . . . . . . . .        L Far          F007Dh PRATICABIOSHARDWAREUFC_TEXT 
 RESET_FLAG . . . . . . . . . . .        Word              48h DATA 
 RIGHT_KEY  . . . . . . . . . . .        Number            36h 
 RIGHT_SHIFT  . . . . . . . . . .        Number             1h 
@@ -708,7 +707,7 @@ RS232_TIM_OUT  . . . . . . . . .        Byte[4]           52h DATA
 SCROLL_KEY . . . . . . . . . . .        Number            46h 
 SCROLL_SHIFT . . . . . . . . . .        Number            10h 
 SCROLL_STATE . . . . . . . . . .        Number            10h 
-START  . . . . . . . . . . . . .        L Near         F007Eh PRATICABIOSHARDWAREUFC_TEXT 
+START  . . . . . . . . . . . . .        L Near         F007Dh PRATICABIOSHARDWAREUFC_TEXT 
 STATUS_BYTE  . . . . . . . . . .        Byte               0h XXDATA 
 STG_LOC0 . . . . . . . . . . . .        Byte               0h ABS0 
 TIMER  . . . . . . . . . . . . .        Number            40h 
@@ -724,9 +723,9 @@ UART_SEGMENT . . . . . . . . . .        Number          E000h
 VIDEO_INT  . . . . . . . . . . .        Word              40h ABS0 
 inicio . . . . . . . . . . . . .        L Near         FFFF0h PRATICABIOSHARDWAREUFC_TEXT Public 
 init_8251  . . . . . . . . . . .        L Near         F0007h PRATICABIOSHARDWAREUFC_TEXT 
-init_8253  . . . . . . . . . . .        L Near         F0063h PRATICABIOSHARDWAREUFC_TEXT 
+init_8253  . . . . . . . . . . .        L Near         F0062h PRATICABIOSHARDWAREUFC_TEXT 
 init_bios  . . . . . . . . . . .        L Near         F0000h PRATICABIOSHARDWAREUFC_TEXT 
-loop_principal . . . . . . . . .        L Near         F00FEh PRATICABIOSHARDWAREUFC_TEXT 
+loop_principal . . . . . . . . .        L Near         F00FDh PRATICABIOSHARDWAREUFC_TEXT 
 uart_int . . . . . . . . . . . .        L Near         E0000h PRATICABIOSHARDWAREUFC_TEXT 
 
-praticaBiosHardwareUFC.asm: 584 lines, 2 passes, 0 ms, 2 warnings, 1 errors
+praticaBiosHardwareUFC.asm: 583 lines, 2 passes, 0 ms, 2 warnings, 1 errors
