@@ -8,8 +8,8 @@
 ; 42h  8253 Counter 1
 ; 44h  8253 Counter 2
 ; 46h  8253 Command
-; 80h  8259 Command
-; 82h  8259 Data
+; 80h  8259 Command INTA00
+; 82h  8259 Data INTA01
 ;---------------------------------------------
 ; Mapa de Memória
 ; 00000h–003FFh	Interrupt Vector Table (IVT)
@@ -21,7 +21,6 @@
 
 .8086
 .model large
-.code
 
 .LIST
 
@@ -102,6 +101,27 @@ TOS	LABEL	WORD
 STACK	ENDS
 
 ;----------------------------------------
+;	ROM BIOS DATA AREAS		:
+;----------------------------------------
+
+DATA	SEGMENT AT 40H
+RS232_BASE	DW	4 DUP(?)	; ADDRESSES OF RS232 ADAPTERS
+PRINTER_BASE	DW	4 DUP(?)	; ADDRESSES OF PRINTERS
+EQUIP_FLAG	DW	?		; INSTALLED HARDWARE
+MFG_TST 	DB	?		; INITIALIZATION FLAG
+MEMORY_SIZE	DW	?		; MEMORY SIZE IN K BYTES
+
+
+;O MONTADOR ORIGINAL DA IBM ACEITA QUE DOIS LABELS DE TABELAS
+;REALOCAVEIS SEJA SOMADO (DATA_AREA[OFFSET MFG_ERR_FLAG] POR EX), 
+;MAS O JWASM NÃO. ENTÃO DEVEMOS MODIFICAR MFG_ERR_FLAG DE DB PARA
+;EQU
+;MFG_ERR_FLAG	DB	?		; SCRATCHPAD FOR MANUFACTURING
+MFG_ERR_FLAG	EQU	15H		; SCRATCHPAD FOR MANUFACTURING
+
+		DB	?		; ERROR CODES
+
+;----------------------------------------
 ;	KEYBOARD DATA AREAS		:
 ;----------------------------------------
 
@@ -149,7 +169,11 @@ DEL_KEY 	EQU	83		; SCAN CODE FOR DELETE KEY
 ;----------------------------------------
 IO_ROM_INIT	DW	?		; PNTR TO OPTIONAL I/O ROM INIT ROUTINE
 IO_ROM_SEG	DW	?		; POINTER TO IO ROM SEGMENT
-INTR_FLAG	DB	?		; FLAG TO INDICATE AN INTERRUPT HAPPEND
+;O MONTADOR ORIGINAL DA IBM ACEITA QUE DOIS LABELS DE TABELAS
+;REALOCAVEIS SEJA SOMADO(NOVAMENTE)
+INTR_FLAG		DB	06BH		; FLAG TO INDICATE AN INTERRUPT HAPPEND
+INTR_FLAG_OFFSET	EQU	041H		; FLAG TO INDICATE AN INTERRUPT HAPPEND
+
 
 ;----------------------------------------
 ;	TIMER DATA AREA 		:
@@ -178,6 +202,7 @@ RESET_FLAG	DW	?		; WORD = 1234H IF KEYBOARD RESET UNDERWAY
 ;--------------------------------------------------------
 PRINT_TIM_OUT	DB	4 DUP(?)
 RS232_TIM_OUT	DB	4 DUP(?)
+DATA ENDS
 ;----------------------------------------
 ;	EXTRA DATA AREA 		:
 ;----------------------------------------
@@ -185,13 +210,15 @@ XXDATA	SEGMENT AT 50H
 STATUS_BYTE	DB	?
 XXDATA		ENDS
 
+
+.CODE
+
 ;----------------------------------------
 ;	DATA DEFINITIONS		:
 ;----------------------------------------
 
 C1	DW	C11		; RETURN ADDRESS
 ;C2	DW	C24		; RETURN ADDRESS FOR DUMMY STACK
-
 
 
 ORG 0E0000h
@@ -273,6 +300,28 @@ init_8251:
     mov al,15h
     out 12h,al
 
+
+
+;--------------------------------------------------------
+;	8253 TIMER CHECKOUT				:
+;DESCRIPTION						:
+;	VERIFY THAT THE SYSTEM TIMER (0) DOESN'T COUNT  :
+;	TOO FAST OR TOO SLOW.
+; COMENTADO PARA POSTERIOR AVALIACAO			:
+;--------------------------------------------------------
+D7:
+;	MOV	DATA_AREA[OFFSET MFG_ERR_FLAG],02H
+					; <><><><><><><><><><><><><><><><>
+;					; <><><>TIMER CHECKPOINT (2)<><><>
+;	MOV	AL,0FEH 		; MASK ALL INTRS EXCEPT LVL 0
+;	OUT	INTA01,AL		; WRITE THE 8259 IMR
+;	MOV	AL,00010000B		; SEL TIM 0, LSB, MODE 0, BINARY
+;	OUT	TIM_CTL,AL		; WRITE TIMER CONTROL MODE REG
+;	MOV	CX,16H			; SET PGM LOOP CNT
+;	MOV	AL,CL			; SET TIMER 0 CNT REG
+;	OUT	TIMER0,AL		; WRITE TIMER 0 CNT REG
+
+
 ;--------------------------------------------------------
 ;	INICIALIZAR 8259 PIC				:
 ;--------------------------------------------------------
@@ -320,10 +369,65 @@ out INTA01,al
 mov al,0EFh
 out INTA01,al
 
+;--------------------------------------------------------
+;	8259 INTERRUPT CONTROLLER TEST			:
+;DESCRIPTION						:
+;	READ/WRITE THE INTERRUPT MASK REGISTER (IMR)	:
+;	WITH ALL ONES AND ZEROES. ENABLE SYSTEM 	:
+;	INTERRUPTS.  MASK DEVICE INTERRUPTS OFF. CHECK	:
+;	FOR HOT INTERRUPTS (UNEXPECTED).		:
+;--------------------------------------------------------
+	ASSUME	DS:ABS0
+C21:	POP	DS
+
+;----- TEST THE IMR REGISTER
+
+C21A:	MOV	DATA_AREA[OFFSET MFG_ERR_FLAG],05H
+					; <><><><><><><><><><><><>
+					; <><><>CHECKPOINT 5<><><>
+	MOV	AL,0			; SET IMR TO ZERO
+	OUT	INTA01,AL
+	IN	AL,INTA01		; READ IMR
+	OR	AL,AL			; IMR = 0?
+	JNZ	D6			; GO TO ERR ROUTINE IF NOT 0
+C21B:
+	MOV	AL,0FFH 		; DISABLE DEVICE INTERRUPTS
+	OUT	INTA01,AL		; WRITE TO IMR
+	OUT	INTA01,AL		; REPETIDO POIS ESTRANHAMENTE O IMR NAO CONSEGUE SER SETADO NO PRIMEIRO OUT
+	IN	AL,INTA01		; READ IMR
+	ADD	AL,1			; ALL IMR BITS ON?
+	JNZ	D6			; NO - GO TO ERR ROUTINE
+
+
+
+;----- CHECK FOR HOT INTERRUPTS
+
+;----- INTERRUPTS ARE MASKED OFF.  CHECK THAT NO INTERRUPTS OCCUR
+
+	MOV	DATA_AREA[INTR_FLAG_OFFSET],AL	; CLEAR INTERRUPT FLAG
+	STI				; ENABLE EXTERNAL INTERRUPTS
+	SUB	CX,CX			; WAIT 1 SEC FOR ANY INTRS THAT
+D4:
+	LOOP	D4			; MIGHT OCCUR
+D5:
+	LOOP	D5
+	CMP	DATA_AREA[INTR_FLAG_OFFSET],00H ; DID ANY INTERRUPTS OCCUR?
+	MOV	AL,0EFH			; ATIVANDO APENAS A INTERRUPCAO SERIAL (IRQ4)
+	OUT	INTA01,AL
+;	JZ	D7			; NO - GO TO NEXT TEST
+	JZ	init_8253		; MODIFICADO. PULA PARA A CONFIGURACAO DO 8253
+D6:
+;COMENTANDO POIS NÃO FOI IMPLEMENTADO AINDA
+;	MOV	SI,OFFSET E0		; DISPLAY 101 ERROR
+;	CALL	E_MSG
+	CLI
+	HLT				; HALT THE SYSTEM
+
+;--------------------------------------------------------
+;	INICIALIZAR 8253 PIT				:
+;--------------------------------------------------------
 init_8253:
-;---------------------------------------------
-; Parametrizar 8253
-;---------------------------------------------
+
 ;Bits			Descrição
 ;D7–D6 (SC1:SC0)	Seleciona contador 0, 1 ou 2
 ;D5–D4 (RW1:RW0)	Seleciona byte baixo, byte alto, ou byte baixo seguido de byte alto ou comando de latch da contagem atual
@@ -435,7 +539,7 @@ C11:	JNE	ERR01			; HALT SYSTEM IF ERROR
 ;	ROS CHECKSUM SUBROUTINE 	:
 ;----------------------------------------
 ROS_CHECKSUM	PROC	NEAR		; NEXT_ROS_MODULE
-	MOV	CX,0ffffh 		; NUMBER OF BYTES TO ADD
+	MOV	CX,0fffh 		; NUMBER OF BYTES TO ADD
 ROS_CHECKSUM_CNT:			; ENTRY FOR OPTIONAL ROS TEST
 	XOR	AL,AL
 C26:
@@ -447,7 +551,7 @@ C26:
 
 	MOV AX,0E000H			; APONTANDO DS PARA E0000H
 	MOV DS,AX
-	MOV	CX,0ffffh 		; NUMBER OF BYTES TO ADD
+	MOV	CX,0fffh 		; NUMBER OF BYTES TO ADD
 C26a:
 	ADD	AL,DS:[BX]		;CHECA OS PRIMEIROS 64KBYTES DA MEMORIA
 	INC	BX			; POINT TO NEXT BYTE

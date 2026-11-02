@@ -1,2 +1,3 @@
+praticaBiosHardwareUFC.asm(174) : Warning A4184: Instructions and initialized data not supported in AT segments
 praticaBiosHardwareUFC.asm : Warning A4222: Segment exceeds 64k limit: PRATICABIOSHARDWAREUFC_TEXT
 praticaBiosHardwareUFC.asm : Error A2198: Invalid fixup type for BIN: 9 at location PRATICABIOSHARDWAREUFC_TEXT.FFFFB
