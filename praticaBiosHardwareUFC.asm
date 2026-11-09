@@ -236,9 +236,6 @@ uart_int:
 org 0F0000h
 
 init_bios:
-    mov ss,ax
-    mov sp,0400h
-    mov es,ax
 
 
 init_8251:
@@ -448,6 +445,7 @@ MOV AL, 00H       ; Byte alto
 OUT 40H, AL
 
 ;setando RxRDY para int24h
+    mov si,0000h
     mov ax, UART_OFFSET
     mov [si+90h], ax
     mov ax, UART_SEGMENT
@@ -516,7 +514,7 @@ ERR01:	HLT				; HALT SYSTEM
 ;----------------------------------------
 C10:
 	MOV	AX,CS			; SETUP SS SEG REG
-;	MOV	SS,AX
+	MOV	SS,AX
 	MOV	DS,AX			; SET UP DATA SEG TO POINT TO
 					; ROM ADDRESS
 	CLD				; SET DIRECTION FLAG TO INC.
@@ -565,6 +563,10 @@ ROS_CHECKSUM	ENDP
 ;	VOLTA AO NOSSO CÓDIGO
 ;--------------------------------------------------------
 	STI				;ativa interrupcoes novamente
+	mov ax,0000h
+	mov ss,ax
+	mov ds,ax
+	mov sp,0030h
 
 loop_principal:
     nop
