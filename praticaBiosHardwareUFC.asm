@@ -40,11 +40,13 @@
 ;PORT_B		EQU	61H		; 8255 PORT B ADDR SEM UTILIZACAO
 ;PORT_C		EQU	62H		; 8255 PORT C ADDR SEM UTILIZACAO
 ;CMD_PORT	EQU	63H		; 8255 COMANDO SEM UTILIZACAO
+UART_DATA EQU 10H
+UART_CTL EQU 12H
 INTA00		EQU	80H		; 8259 COMANDO
 INTA01		EQU	82H		; 8259 DADOS
 EOI		EQU	20H
 TIMER		EQU	40H
-TIM_CTL 	EQU	46H		; 8253 TIMER CONTROLE
+TIMER_CTL 	EQU	46H		; 8253 TIMER CONTROLE
 TIMER0		EQU	40H		; 8253 CONTADOR 0
 TMINT		EQU	01		; TIMER 0 INTR RECVD MASK
 DMA08		EQU	08		; DMA STATUS REG PORT ADDR
@@ -62,23 +64,25 @@ MIN_PERIOD	EQU	410H
 
 ABS0	SEGMENT AT 0
 STG_LOC0	LABEL	BYTE
-	ORG	2*4
+	ORG	2 * 4
 NMI_PTR 	LABEL	WORD
-	ORG	5*4
+	ORG	5 * 4
 INT5_PTR	LABEL	WORD
-	ORG	8*4
+	ORG	8 * 4
 INT_ADDR	LABEL	WORD
 INT_PTR 	LABEL	DWORD
-	ORG	10H*4
+	ORG	10H * 4
 VIDEO_INT	LABEL	WORD
-	ORG	1DH*4
+	ORG	1DH * 4
 PARM_PTR	LABEL	DWORD		; POINTER TO VIDEO PARMS
-	ORG	18H*4
+	ORG	18H * 4
 BASIC_PTR	LABEL	WORD		; ENTRY POINT FOR CASSETTE BASIC
-	ORG	01EH*4			; INTERRUPT 1EH
+	ORG	01EH * 4			; INTERRUPT 1EH
 DISK_POINTER	LABEL	DWORD
-	ORG	01FH*4			; LOCATION OF POINTER
+	ORG	01FH * 4			; LOCATION OF POINTER
 EXT_PTR LABEL	DWORD			; POINTER TO EXTENSION
+	ORG 024H * 4
+UART_VEC  EQU  24H * 4
 	ORG	400H
 DATA_AREA	LABEL	BYTE		; ABSOLUTE LOCATION OF DATA SEGMENT
 DATA_WORD	LABEL	WORD
@@ -86,10 +90,11 @@ DATA_WORD	LABEL	WORD
 MFG_TEST_RTN	LABEL	FAR
 	ORG	7C00H
 BOOT_LOCN	LABEL	FAR
-UART_OFFSET  	EQU	0000H
-UART_SEGMENT 	EQU	0E000h
-
+UART_OFFSET  EQU 0000H
+UART_SEGMENT EQU 0E000H
 ABS0		ENDS
+
+
 
 ;------------------------------------------------
 ; STACK -- USED DURING INITIALIZATION ONLY	:
@@ -116,7 +121,7 @@ MEMORY_SIZE	DW	?		; MEMORY SIZE IN K BYTES
 ;REALOCAVEIS SEJA SOMADO (DATA_AREA[OFFSET MFG_ERR_FLAG] POR EX), 
 ;MAS O JWASM NÃO. ENTÃO DEVEMOS MODIFICAR MFG_ERR_FLAG DE DB PARA
 ;EQU
-;MFG_ERR_FLAG	DB	?		; SCRATCHPAD FOR MANUFACTURING
+;MFG_ERR_FLAG	DB	?
 MFG_ERR_FLAG	EQU	15H		; SCRATCHPAD FOR MANUFACTURING
 
 		DB	?		; ERROR CODES
@@ -210,7 +215,6 @@ XXDATA	SEGMENT AT 50H
 STATUS_BYTE	DB	?
 XXDATA		ENDS
 
-
 .CODE
 
 ;----------------------------------------
@@ -222,23 +226,31 @@ C1	DW	C11		; RETURN ADDRESS
 
 
 ORG 0E0000h
-uart_int:
-    in  al,10h
-    out 10h,al
-    mov ds:[bx],al 
-    add bx,2
+UART_INT:
+	;PUSH AX
+	;PUSH BX
+
+	; grava primeiro na memoria e depois envia para a porta de dados, a partir da memória
+    IN  AL, UART_DATA
+    MOV DS:[BX], AL
+
+	MOV AL, DS:[BX]
+	OUT UART_DATA, AL
+    INC BX
+
    ;finaliza a interrupcao	
-    mov al,20h          
-    out 80h,al
-    iret
+    MOV AL, EOI          
+    OUT INTA00, AL
 
-
+	;POP BX
+	;POP AX
+	IRET
 org 0F0000h
 
-init_bios:
+INIT_BIOS:
 
 
-init_8251:
+INIT_8251:
 
 
 ;---------------------------------------------
@@ -254,14 +266,14 @@ init_8251:
     ;D2	RxE	0	Receiver disabled
     ;D1	DTR	0	DTR inactive
     ;D0	TxEN	0	Transmitter disabled
+    mov al,00h
+    out UART_CTL,al
+    mov al,00h
+    out UART_CTL,al
+    mov al,00h
+    out UART_CTL,al
     mov al,40h
-    out 12h,al
-    mov al,40h
-    out 12h,al
-    mov al,40h
-    out 12h,al
-    mov al,40h
-    out 12h,al
+    out UART_CTL,al
 
     ; Datasheet do 8251A recomenda inclusao de wait states apos resetar.
     ;mov cx,1000
@@ -290,34 +302,12 @@ init_8251:
     ;01 -> 1 stop bit
     ;10 -> 1.5 stop bits
     ;11 -> 2 stop bits
-    mov al,4eh
-    out 12h,al
+    mov al,4Eh
+    out UART_CTL,al
 
     ; Comando word
     mov al,15h
-    out 12h,al
-
-
-
-;--------------------------------------------------------
-;	8253 TIMER CHECKOUT				:
-;DESCRIPTION						:
-;	VERIFY THAT THE SYSTEM TIMER (0) DOESN'T COUNT  :
-;	TOO FAST OR TOO SLOW.
-; COMENTADO PARA POSTERIOR AVALIACAO			:
-;--------------------------------------------------------
-D7:
-;	MOV	DATA_AREA[OFFSET MFG_ERR_FLAG],02H
-					; <><><><><><><><><><><><><><><><>
-;					; <><><>TIMER CHECKPOINT (2)<><><>
-;	MOV	AL,0FEH 		; MASK ALL INTRS EXCEPT LVL 0
-;	OUT	INTA01,AL		; WRITE THE 8259 IMR
-;	MOV	AL,00010000B		; SEL TIM 0, LSB, MODE 0, BINARY
-;	OUT	TIM_CTL,AL		; WRITE TIMER CONTROL MODE REG
-;	MOV	CX,16H			; SET PGM LOOP CNT
-;	MOV	AL,CL			; SET TIMER 0 CNT REG
-;	OUT	TIMER0,AL		; WRITE TIMER 0 CNT REG
-
+    out UART_CTL,al
 
 ;--------------------------------------------------------
 ;	INICIALIZAR 8259 PIC				:
@@ -423,8 +413,7 @@ D6:
 ;--------------------------------------------------------
 ;	INICIALIZAR 8253 PIT				:
 ;--------------------------------------------------------
-init_8253:
-
+INIT_8253:
 ;Bits			Descrição
 ;D7–D6 (SC1:SC0)	Seleciona contador 0, 1 ou 2
 ;D5–D4 (RW1:RW0)	Seleciona byte baixo, byte alto, ou byte baixo seguido de byte alto ou comando de latch da contagem atual
@@ -435,26 +424,54 @@ init_8253:
 ; Mode 3, binary, low byte followed by high byte
 
 MOV AL, 36H	  ; Contador 0 Modo 3(Onda quadrada), contador binário
-OUT 46H, AL       ; Word de Controle
+OUT TIMER_CTL, AL       ; Word de Controle
 
 ;Carrega a contagem no Contador 0
 MOV AL, 0CH      ; Byte baixo
-OUT 40H, AL
+OUT TIMER0, AL
 
 MOV AL, 00H       ; Byte alto
-OUT 40H, AL
+OUT TIMER0, AL
 
-;setando RxRDY para int24h
-    mov si,0000h
-    mov ax, UART_OFFSET
-    mov [si+90h], ax
-    mov ax, UART_SEGMENT
-    mov [si+92h], ax
-    sti
+;--------------------------------------------------------
+;	8253 TIMER CHECKOUT				:
+;DESCRIPTION						:
+;	VERIFY THAT THE SYSTEM TIMER (0) DOESN'T COUNT  :
+;	TOO FAST OR TOO SLOW.
+; COMENTADO PARA POSTERIOR AVALIACAO			:
+;--------------------------------------------------------
+D7:
+;	MOV	DATA_AREA[OFFSET MFG_ERR_FLAG],02H
+					; <><><><><><><><><><><><><><><><>
+;					; <><><>TIMER CHECKPOINT (2)<><><>
+;	MOV	AL,0FEH 		; MASK ALL INTRS EXCEPT LVL 0
+;	OUT	INTA01,AL		; WRITE THE 8259 IMR
+;	MOV	AL,00010000B		; SEL TIM 0, LSB, MODE 0, BINARY
+;	OUT	TIM_CTL,AL		; WRITE TIMER CONTROL MODE REG
+;	MOV	CX,16H			; SET PGM LOOP CNT
+;	MOV	AL,CL			; SET TIMER 0 CNT REG
+;	OUT	TIMER0,AL		; WRITE TIMER 0 CNT REG
 
 
+; Configura o vetor de interrupção 24h
+MOV AX, 0000H
+MOV SI, AX
+
+MOV AX, UART_OFFSET
+MOV [SI+UART_VEC], AX
+
+MOV AX, UART_SEGMENT
+MOV [SI+UART_VEC+2], AX
+
+;----------------------------------------
+;	8086 PROCESSOR TEST		:
+; DESCRIPTION				:
+;	VERIFY 8088 FLAGS, REGISTERS	:
+;	AND CONDITIONAL JUMPS		:
+;----------------------------------------
 RESET	LABEL	FAR
-START:	CLI				; DISABLE INTERRUPTS
+START:	
+	CLI				; DISABLE INTERRUPTS
 	MOV	AH,0D5H 		; SET SF, CF, ZF, AND AF FLAGS ON
 	SAHF
 	JNC	ERR01			; GO TO ERR ROUTINE IF CF NOT SET
@@ -563,10 +580,12 @@ ROS_CHECKSUM	ENDP
 ;	VOLTA AO NOSSO CÓDIGO
 ;--------------------------------------------------------
 	STI				;ativa interrupcoes novamente
-	mov ax,0000h
+	mov ax,0030h
+	mov bx,0600h
 	mov ss,ax
+	MOV AX, 0000H
 	mov ds,ax
-	mov sp,0030h
+	mov sp,0100h
 
 loop_principal:
     nop
@@ -580,6 +599,5 @@ inicio:
 	mov ds,ax
 	mov ss,ax	
 	mov bx,0100h
-	jmp far ptr init_bios
-
+	jmp far ptr INIT_BIOS
 end inicio
